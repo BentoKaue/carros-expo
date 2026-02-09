@@ -1,8 +1,8 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite";
 
 // Abre o banco
 const getDB = async () => {
-  return await SQLite.openDatabaseAsync('clinica.db');
+  return await SQLite.openDatabaseAsync("concessionaria.db");
 };
 
 // Inicializa tabelas
@@ -11,96 +11,104 @@ export const initDB = async () => {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
 
-    CREATE TABLE IF NOT EXISTS pacientes (
+    CREATE TABLE IF NOT EXISTS carros (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nome TEXT NOT NULL,
-      telefone TEXT,
-      idade INTEGER
+      marca TEXT NOT NULL,
+      modelo TEXT NOT NULL,
+      ano INTEGER NOT NULL,
+      preco REAL NOT NULL,
+      vendido INTEGER NOT NULL DEFAULT 0
     );
 
-    CREATE TABLE IF NOT EXISTS consultas (
+    CREATE TABLE IF NOT EXISTS vendas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      paciente_id INTEGER,
-      data TEXT,
-      descricao TEXT,
-      FOREIGN KEY (paciente_id) REFERENCES pacientes(id)
+      carro_id INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      descricao TEXT NOT NULL,
+      FOREIGN KEY (carro_id) REFERENCES carros(id)
     );
   `);
 };
 
 /* ============================================================
-                    PACIENTES (CRUD)
+                    CARROS (CRUD)
    ============================================================ */
 
-export const addPaciente = async (nome, telefone, idade) => {
+export const addCarro = async (marca, modelo, ano, preco) => {
   const db = await getDB();
   const result = await db.runAsync(
-    'INSERT INTO pacientes (nome, telefone, idade) VALUES (?, ?, ?)',
-    [nome, telefone, idade]
+    "INSERT INTO carros (marca, modelo, ano, preco, vendido) VALUES (?, ?, ?, ?, 0)",
+    [marca, modelo, ano, preco]
   );
   return result.lastInsertRowId;
 };
 
-export const getPacientes = async () => {
+export const getCarros = async () => {
   const db = await getDB();
-  const allRows = await db.getAllAsync('SELECT * FROM pacientes');
+  const allRows = await db.getAllAsync("SELECT * FROM carros ORDER BY id DESC");
   return allRows;
 };
 
-export const deletePaciente = async (id) => {
+export const deleteCarro = async (id) => {
   const db = await getDB();
-  await db.runAsync('DELETE FROM pacientes WHERE id = ?', [id]);
+  await db.runAsync("DELETE FROM carros WHERE id = ?", [id]);
+};
+
+export const updateCarro = async (id, marca, modelo, ano, preco) => {
+  const db = await getDB();
+  await db.runAsync(
+    "UPDATE carros SET marca = ?, modelo = ?, ano = ?, preco = ? WHERE id = ?",
+    [marca, modelo, ano, preco, id]
+  );
+};
+
+// Alterna status vendido (0/1)
+export const toggleVendido = async (id, vendido) => {
+  const db = await getDB();
+  await db.runAsync("UPDATE carros SET vendido = ? WHERE id = ?", [vendido, id]);
 };
 
 /* ============================================================
-                    CONSULTAS (CRUD)
+                    VENDAS (CRUD)
    ============================================================ */
 
-// ADICIONAR CONSULTA
-export const addConsulta = async (paciente_id, data, descricao) => {
+export const addVenda = async (carro_id, data, descricao) => {
   const db = await getDB();
   const result = await db.runAsync(
-    'INSERT INTO consultas (paciente_id, data, descricao) VALUES (?, ?, ?)',
-    [paciente_id, data, descricao]
+    "INSERT INTO vendas (carro_id, data, descricao) VALUES (?, ?, ?)",
+    [carro_id, data, descricao]
   );
   return result.lastInsertRowId;
 };
 
-// LISTAR CONSULTAS
-export const getConsultas = async () => {
+export const getVendas = async () => {
   const db = await getDB();
   const rows = await db.getAllAsync(`
-    SELECT 
-      consultas.id,
-      consultas.paciente_id,
-      consultas.data,
-      consultas.descricao,
-      pacientes.nome AS nome_paciente
-    FROM consultas
-    JOIN pacientes ON pacientes.id = consultas.paciente_id
-    ORDER BY consultas.data DESC
+    SELECT
+      vendas.id,
+      vendas.carro_id,
+      vendas.data,
+      vendas.descricao,
+      carros.marca AS marca_carro,
+      carros.modelo AS modelo_carro,
+      carros.ano AS ano_carro,
+      carros.preco AS preco_carro
+    FROM vendas
+    JOIN carros ON carros.id = vendas.carro_id
+    ORDER BY vendas.data DESC
   `);
   return rows;
 };
 
-// DELETAR CONSULTA
-export const deleteConsulta = async (id) => {
+export const deleteVenda = async (id) => {
   const db = await getDB();
-  await db.runAsync('DELETE FROM consultas WHERE id = ?', [id]);
+  await db.runAsync("DELETE FROM vendas WHERE id = ?", [id]);
 };
 
-export const updatePaciente = async (id, nome, telefone, idade) => {
-  const db = await getDB(); 
+export const updateVenda = async (id, carro_id, data, descricao) => {
+  const db = await getDB();
   await db.runAsync(
-    "UPDATE pacientes SET nome = ?, telefone = ?, idade = ? WHERE id = ?",
-    [nome, telefone, idade, id]
+    "UPDATE vendas SET carro_id = ?, data = ?, descricao = ? WHERE id = ?",
+    [carro_id, data, descricao, id]
   );
 };
-
-export const updateConsulta = async (id, paciente_id, data, descricao) => {
-  const db = await getDB(); 
-  await db.runAsync(
-    "UPDATE consultas SET paciente_id = ?, data = ?, descricao = ? WHERE id = ?",
-    [paciente_id, data, descricao, id]
-  );
-}; 
