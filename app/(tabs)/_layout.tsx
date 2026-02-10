@@ -29,16 +29,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="carros"
         options={{
-          title: "", // remove texto
+          title: "Carros", 
+        }}
+      />
+
+      <Tabs.Screen
+        name="clientes"
+        options={{
+          title: "Clientes",
         }}
       />
 
       <Tabs.Screen
         name="vendas"
         options={{
-          title: "",
+          title: "Vendas",
         }}
       />
+
     </Tabs>
   );
 }

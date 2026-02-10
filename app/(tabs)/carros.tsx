@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, StyleSheet, Alert } from "react-native";
+import { View, Text, FlatList, StyleSheet, Alert, TouchableOpacity, Modal } from "react-native";
 import { useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 
@@ -20,6 +20,8 @@ export default function CarrosScreen() {
   const [listaCarros, setListaCarros] = useState<any[]>([]);
   const [idEdicao, setIdEdicao] = useState<number | null>(null);
 
+  const [mostrarForm, setMostrarForm] = useState(false); // 👈 controla modal
+
   useEffect(() => {
     (async () => {
       await initDB();
@@ -29,7 +31,7 @@ export default function CarrosScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      atualizar(); // atualiza ao voltar pra aba
+      atualizar();
     }, [])
   );
 
@@ -38,7 +40,6 @@ export default function CarrosScreen() {
     setListaCarros(carros);
   };
 
-  // 📷 menu câmera/galeria
   const escolherImagem = () => {
     Alert.alert("Imagem do carro", "Como você quer adicionar a imagem?", [
       { text: "Cancelar", style: "cancel" },
@@ -55,10 +56,9 @@ export default function CarrosScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-    allowsEditing: true,
-    quality: 0.8,
-  });
-
+      allowsEditing: true,
+      quality: 0.8,
+    });
 
     if (!result.canceled) setImagemUri(result.assets[0].uri);
   };
@@ -84,8 +84,13 @@ export default function CarrosScreen() {
 
       Alert.alert("Sucesso", idEdicao ? "Carro atualizado!" : "Carro cadastrado!");
       setIdEdicao(null);
-      setMarca(""); setModelo(""); setAno(""); setPreco(""); setImagemUri(null);
+      setMarca("");
+      setModelo("");
+      setAno("");
+      setPreco("");
+      setImagemUri(null);
 
+      setMostrarForm(false); // 👈 fecha modal ao salvar
       atualizar();
     } catch (e: any) {
       Alert.alert("Erro", e.message || "Não foi possível salvar.");
@@ -99,6 +104,8 @@ export default function CarrosScreen() {
     setAno(String(car.ano));
     setPreco(String(car.preco));
     setImagemUri(car.imagemUri ?? null);
+
+    setMostrarForm(true); // 👈 abre modal ao editar
   };
 
   const excluir = async (id: number) => {
@@ -115,18 +122,6 @@ export default function CarrosScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Carros</Text>
 
-      <CarroForm
-        marca={marca} setMarca={setMarca}
-        modelo={modelo} setModelo={setModelo}
-        ano={ano} setAno={setAno}
-        preco={preco} setPreco={setPreco}
-        imagemUri={imagemUri}
-        onPickImage={escolherImagem}
-        onSalvar={salvar}
-      />
-
-      <Text style={styles.subtitle}>Lista:</Text>
-
       <FlatList
         data={listaCarros}
         keyExtractor={(item) => item.id.toString()}
@@ -134,6 +129,47 @@ export default function CarrosScreen() {
           <CarroItem item={item} onEditar={editar} onExcluir={excluir} onToggleVendido={toggle} />
         )}
       />
+
+      {/* 🔥 Botão flutuante "+" */}
+      <TouchableOpacity style={styles.fab} onPress={() => setMostrarForm(true)}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+
+      {/* 🔥 Modal do Formulário */}
+      <Modal visible={mostrarForm} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {idEdicao ? "Editar Carro" : "Cadastrar Carro"}
+            </Text>
+
+            <CarroForm
+              marca={marca} setMarca={setMarca}
+              modelo={modelo} setModelo={setModelo}
+              ano={ano} setAno={setAno}
+              preco={preco} setPreco={setPreco}
+              imagemUri={imagemUri}
+              onPickImage={escolherImagem}
+              onSalvar={salvar}
+            />
+
+            <TouchableOpacity
+              style={styles.btnCancelar}
+              onPress={() => {
+                setMostrarForm(false);
+                setIdEdicao(null);
+                setMarca("");
+                setModelo("");
+                setAno("");
+                setPreco("");
+                setImagemUri(null);
+              }}
+            >
+              <Text style={styles.btnCancelarText}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -142,4 +178,58 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 50, backgroundColor: COLORS.background },
   title: { fontSize: 26, fontWeight: "bold", textAlign: "center", color: COLORS.primaryDark, marginBottom: 10 },
   subtitle: { fontSize: 18, fontWeight: "bold", marginTop: 18, marginBottom: 10, color: COLORS.primary },
+
+  // 🔥 FAB "+"
+  fab: {
+    position: "absolute",
+    bottom: 25,
+    right: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 6,
+  },
+  fabText: {
+    fontSize: 32,
+    color: "#fff",
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+
+  // 🔥 Modal
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+    color: COLORS.primaryDark,
+  },
+
+  // botão fechar
+  btnCancelar: {
+    marginTop: 15,
+    backgroundColor: "#999",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  btnCancelarText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
 });
